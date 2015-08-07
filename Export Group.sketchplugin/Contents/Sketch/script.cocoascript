@@ -1,0 +1,148 @@
+@import 'sandbox.js'
+
+var onRun = function(context) {
+  var doc = context.document;               
+  var selection = context.selection;
+  var newArtboardList = [];
+
+  if ([selection count] === 0) {
+    alert('You need to select at least one layer', 'Selection is empty');
+  } else {
+    for (var i = 0; i < [selection count]; i++) {
+      var currentLayer = [selection objectAtIndex:i];
+
+      if (currentLayer.className() == "MSLayerGroup") {
+        var currentGroupName = [currentLayer name];
+        var multiple = [true, false, false];
+        if(currentGroupName.indexOf("@2") > 0) multiple[1] = true, multiple[0] = false;
+        if(currentGroupName.indexOf("@3") > 0) multiple[2] = true, multiple[0] = false;
+        if(currentGroupName.indexOf("@1") > 0) multiple[0] = true;
+
+        for (var j = 0 ; j < 3; j++) {
+          if (!multiple[j]) continue;
+          var targetArtBoard = addArtBoard(doc, currentLayer, j + 1);
+          newArtboardList.push(targetArtBoard);
+        }
+
+      }
+    }
+  }
+
+  var fileURL = fileSaver(),
+      exportPath = fileURL.path() + '/';
+  new AppSandbox().authorize(exportPath,
+    function(){
+      for (var i=0; i < newArtboardList.length; i++) {
+        var currentArtboard = newArtboardList[i];
+        [doc saveArtboardOrSlice:currentArtboard toFile: exportPath + [currentArtboard name] + ".png"];
+      }
+  });
+};
+
+function addArtBoard(doc, currentLayer, multi){
+  var page = [doc currentPage], 
+      edge = getEdge(page), 
+      targetArtBoard = [MSArtboardGroup new],
+      currentGroupName = [currentLayer name].split("@")[0],
+      width = currentLayer.frame().width(),
+      height = currentLayer.frame().height(),
+      parentGroup = [currentLayer parentGroup],
+      targetGroup = [currentLayer duplicate];
+
+  var artboardName = null;
+  if (multi === 1) artboardName = currentGroupName;
+  else if (multi === 2) artboardName = currentGroupName + "@2x";
+  else if (multi === 3) artboardName = currentGroupName + "@3x";
+  else log("*******************************multi error" + multi);
+
+  [[targetGroup frame] setWidth: width * multi];
+  [[targetGroup frame] setHeight: height * multi]; 
+
+  [[targetArtBoard frame] setWidth: width * multi];
+  [[targetArtBoard frame] setHeight: height * multi]; 
+  [doc addLayer: targetArtBoard];
+
+  [targetArtBoard setName: artboardName];
+
+  [[targetArtBoard frame] setX: edge.right + 20];
+  [[targetArtBoard frame] setY: edge.up];
+
+  [parentGroup removeLayer:targetGroup];
+  [targetArtBoard addLayers:[targetGroup]]; 
+
+  [[targetGroup frame] setX:0];
+  [[targetGroup frame] setY:0];
+  [targetGroup setName: currentGroupName];
+
+  return targetArtBoard;
+
+}
+
+
+function getEdge(page){
+  var page = page,
+      artboards = [page artboards];
+
+  var edge = {
+    "up" : 0,
+    "right" : 0,
+    "down" : 0,
+    "left" : 0
+  };
+
+  for (var i=0; i < [artboards count]; i++) {
+    var currentArtboard = [artboards objectAtIndex:i],
+        up = currentArtboard.frame().y(),
+        left = currentArtboard.frame().x(),
+        down = up + currentArtboard.frame().height(),
+        right = left + currentArtboard.frame().width();
+
+    if (i == 0) {
+      edge.up = up;
+      edge.left = left;
+      edge.down = down;
+      edge.right = right;
+      continue;
+    }
+
+    if (up < edge.up) edge.up = up;
+    if (left < edge.left) edge.left = left;
+    if (down > edge.down) edge.down = down;
+    if (right > edge.right) edge.right = right;
+  }
+
+  return edge;
+}
+
+function getRootArtBoard(layer){
+  var currentLayer = layer;
+  if ([currentLayer className] != "MSArtboardGroup") return getRootArtBoard([currentLayer parentGroup]);
+  else return currentLayer;
+}
+
+function fileSaver() {
+    var openPanel = [NSOpenPanel openPanel];
+
+    [openPanel setTitle: "Choose a location…"];
+    [openPanel setMessage: "Select the export location…"];
+    [openPanel setPrompt: "Export"];
+
+    [openPanel setCanCreateDirectories: true];
+    [openPanel setCanChooseFiles: false];
+    [openPanel setCanChooseDirectories: true];
+    [openPanel setAllowsMultipleSelection: false];
+    [openPanel setShowsHiddenFiles: false];
+    [openPanel setExtensionHidden: false];
+
+    var openPanelButtonPressed = [openPanel runModal];
+    if (openPanelButtonPressed == NSFileHandlingPanelOKButton) {
+        allowedUrl = [openPanel URL];
+    }
+    return allowedUrl;
+}
+
+function alert(msg, title) {
+  title = title || "alert";
+  var app = [NSApplication sharedApplication];
+  [app displayDialog:msg withTitle:title];
+}

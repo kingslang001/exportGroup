@@ -1,0 +1,23 @@
+{
+  "author" : "King",
+  "commands" : [
+    {
+      "script" : "script.cocoascript",
+      "handler" : "onRun",
+      "shortcut" : "ctrl `",
+      "name" : "Export Group",
+      "identifier" : "exportgroup"
+    },
+  ],
+  "menu": {
+    "isRoot": true,
+    "items": [
+      "exportgroup",
+    ],
+  },
+  "identifier" : "com.example.sketch.exportgroup",
+  "version" : "0.9",
+  "description" : "Group export handler.",
+  "authorEmail" : "kingslang001@gmail.com",
+  "name" : "Export Group"
+}
